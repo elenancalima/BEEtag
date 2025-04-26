@@ -121,6 +121,8 @@ else
     smP = cell2mat(varargin(find(bradleyP == 1) + 1));
 end
 
+%disp(smP);
+
 
 % If using adaptive thresholding, define threshold value
 bradleyT = strcmp('bradleyThreshold', varargin);
@@ -153,7 +155,20 @@ end
 if threshMode == 0
     BW=im2bw(GRAY, thresh);
 elseif threshMode  == 1
-    BW = bradley(GRAY, smP, brT);
+    nrowSMP = size(smP,1);
+    ncolT = size(brT,2);
+    %disp(nrowSMP);
+    %disp(size(brT,2));
+    BW = bradley(GRAY, smP(1,:), brT(1,1));
+    if nrowSMP * ncolT > 1
+        altBW = cell(nrowSMP * ncolT - 1,1);
+        for smpIdx = 2:(nrowSMP * ncolT)
+            %disp(mod(smpIdx,nrowSMP));
+            %disp(brT(ceil(smpIdx/nrowSMP)));
+            altBW{smpIdx - 1} = bradley(GRAY, smP(1 + mod(smpIdx - 1,nrowSMP),:), brT(1,ceil(smpIdx/nrowSMP)));
+        end
+        %disp(altBW);
+    end
 end
 
 
@@ -176,6 +191,7 @@ trackM = strcmp('robustTrack', varargin);
 
 if sum(trackM) == 0
     trackMode = 0;
+    imo = 0;
 else
     trackMode = 1;
     imo = cell2mat(varargin(find(trackM == 1) + 1));
@@ -197,7 +213,6 @@ end
 %Marker size for green points on potential tag corners
 cornerSize = 10;
 
-%% Find contiguous white regions
 sizeThreshDef = [200 3000];
 
 if numel(sizeThresh) == 1 %If one element is input for sizeThresh, replace minimum
@@ -210,238 +225,76 @@ elseif numel(sizeThresh) == 2 %If input for sizeThresh has two values, replace m
 
 end
 
-% extract binary blobs and measure area
-cc = bwconncomp(BW, 8);
-area = cellfun(@numel,cc.PixelIdxList);
+%% Find contiguous white regions
 
-% threshold blobs by area
-below_min = area  < sizeThreshDef(1);
-above_max = area > sizeThreshDef(2);
+R = findCodes(BW, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo);
 
-% remove blobs with areas out of bounds
-oob = below_min | above_max;
-
-if any(oob)
-    cc.PixelIdxList(oob) = [];
-    cc.NumObjects = cc.NumObjects - sum(oob);
-    area(oob) = [];
-else
-    disp('No sufficiently large what regions detected - try changing thresholding values for binary image threshold (thresh) or tag size (sizeThresh)');
-    return
-end
-
-R=regionprops(cc, 'Centroid','Area','BoundingBox','FilledImage');
-
-%R = regionprops(BW, 'Centroid','Area','BoundingBox','FilledImage');
-%% Set size threshold for tags if supplied
-
-%     if numel(sizeThresh) == 1
-%
-%         R = R([R.Area] > sizeThresh);
-%
-%     elseif numel(sizeThresh) == 2
-%
-%         R =  R([R.Area] > sizeThresh(1) & [R.Area] < sizeThresh(2));
-%
-%     else
-%
-%         disp('sizeThresh has an incorrect numbers of elements: Please supply either a single number or a two-element numeric vector');
-%         return;
-%
-%     end
-%
-%     if isempty(R)
-%
-%         disp('No sufficiently large what regions detected - try changing thresholding values for binary image threshold (thresh) or tag size (sizeThresh)');
-%         return
-%
-%     end
-
-%% Find white regions that are potentially tags
-for i = 1:numel(R)
-
-    try
-        warning('off', 'all');
-        [isq,cnr] = fitquad( R(i).BoundingBox, R(i).FilledImage);
-        warning('on', 'all');
-        R(i).isQuad = isq;
-
-    catch
-        R(i).isQuad = 0;
-        continue
-
+%disp('R before');
+%disp(R);
+if nrowSMP * ncolT > 1
+    altR = cell((nrowSMP * ncolT) - 1,1);
+    for smpIdx = 1:(nrowSMP * ncolT - 1)
+        %disp('addingR');
+        %disp(smpIdx);
+        %imshow(altBW{smpIdx,1});
+        %dummy=input('check image');
+        tempR = findCodes(altBW{smpIdx,1}, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo);
+        %disp(tempR);
+        altR{smpIdx,1} = findCodes(altBW{smpIdx,1}, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo);
+        %disp(altR{smpIdx,1});
     end
-
-    if isq
-
-        R(i).corners = cnr;
-
-    end
+    %disp(altR);
 end
 
-%Subset to quads
-R = R(logical([R.isQuad]));
 
-%% Loop over all white regions that could be squares, and check for valid tags
-
-if isempty(R)
-
-    disp('No potentially valid tag regions found')
-    return
-
-end
-
-for i=1:numel(R)
-
-    corners = R(i).corners;
-    cornersP = [corners(2,:) ;corners(1,:)];
-    tform = maketform('projective', cornersP',[ 0 0;  1 0;  1  1;  0 1]);
-    udata = [0 1];  vdata = [0 1];
-
-    hold on
-
-    for bb = 1:4
-
-        if vis ==1
-            plot(cornersP(1,bb), cornersP(2,bb),'g.', 'MarkerSize', cornerSize)
+    if nrowSMP * ncolT > 1
+        %disp(altR);
+        for smpIdx = 1:(nrowSMP * ncolT - 1)
+            %visualizeCodes(altR{smpIdx,1}, cornerSize);
+            %disp("R");
+            %disp(R);
+            %disp(size(R));
+            %disp("altR");
+            %disp(altR{smpIdx,1});
+            %disp(size(altR{smpIdx,1}));
+            if size(R,1) > 0
+                if size(altR{smpIdx,1},1) > 0
+                    R = [R ; altR{smpIdx,1}];
+                end
+            else
+                R = altR{smpIdx,1};
+            end
         end
-
     end
 
-    %Set up original coordinates in grid
-    x = [5.5/7 4.5/7 3.5/7 2.5/7 1.5/7];
-    xp = [repmat(x(1), 5, 1) ;repmat(x(2), 5, 1);repmat(x(3), 5, 1);repmat(x(4), 5, 1);repmat(x(5), 5, 1)];
-    P = [xp  repmat(x,1,5)'];
-    f = [ 0 0;  0 1;  1  1;  1 0];
-    pts = tforminv(tform,P);
-    pts = round(pts);
-    R(i).pts = pts;
-
-    hold on;
-
-
-    %Extract local pixel values around points
-    ptvals = [];
-
-    for aa = 1:numel(pts(:,1))
-
-        cur = pts(aa,:);
-        cur = fliplr(cur);
-
-        try
-
-            ptvals(aa) = BW(cur(1),cur(2));
-
-            %Comment line below in to use median of 9 adjacent pixels
-            %instead of single pixel value
-            %ptvals(aa) = median(reshape(BW((cur(1)-1):(cur(1)+1),(cur(2)-1):(cur(2)+1))',1,9));
-
-        catch
-
-            continue
-
-        end
-
-    end
-
-
-    % Check pixel values for valid codes
-    if numel(ptvals) == 25
-
-        if trackMode == 0
-
-            code = [ptvals(1:5);ptvals(6:10);ptvals(11:15);ptvals(16:20);ptvals(21:25)];
-            code = fliplr(code);
-            [pass code orientation] = checkOrs25(code);
-            %number = bin2dec(num2str(code(1:15)));
-            R(i).passCode = pass;
-            R(i).code = code;
-            R(i).orientation = orientation;
-
-        elseif trackMode == 1
-
-            [pass code orientation] = permissiveCodeTracking(imo, pts);
-            R(i).passCode = pass;
-            R(i).code = code;
-            R(i).orientation = orientation;
-
-        end
-
-    else
-        R(i).passCode = 0;
-        R(i).code = [];
-        R(i).orientation = NaN;
-    end
-
-end
-
-
-%% Remove invalid tags and find tag front
-R = R([R.passCode]==1);
-
-
-% Tag orientation
-for i=1:numel(R)
-    %%
-    R(i).number = bin2dec(num2str(R(i).code(1:15)));
-
-    %Plot the corners
-    corners = R(i).corners;
-    cornersP = [corners(2,:) ;corners(1,:)];
-    tform = maketform('projective', cornersP',[ 0 0;  1 0;  1  1;  0 1]);
-    udata = [0 1];  vdata = [0 1];
-
-
-    %%
-    or = R(i).orientation;
-    if or == 1
-        ind = [1 2];
-    elseif or == 2
-        ind = [2 3];
-    elseif or ==3
-        ind = [3 4];
-    elseif or ==4
-        ind = [1 4];
-    end
-
-    frontX = mean(cornersP(1,ind));
-    frontY = mean(cornersP(2,ind));
-
-    R(i).frontX = frontX;
-    R(i).frontY = frontY;
-    %
-end
-
-%% If supplied, remove codes that aren't part of supplied valid tag list
-
-if ~isempty(validTagList)
-
-    if isempty(R);
-        disp('No Valid Tags Found');
-    else
-        R = R(ismember([R.number], validTagList));
-    end
-
-end
-
-
+    
 %% Optional code visualization
 
-if vis==1
-    for i = 1:numel(R)
-        corners = R(i).corners;
-        cornersP = [corners(2,:) ;corners(1,:)];
-        text(R(i).Centroid(1), R(i).Centroid(2), num2str(R(i).number), 'FontSize',30, 'color','r');
-        hold on
-        for bb = 1:4
-            plot(cornersP(1,bb), cornersP(2,bb),'g.', 'MarkerSize', cornerSize)
-        end
 
-        plot(R(i).frontX, R(i).frontY, 'b.', 'MarkerSize', cornerSize);
-    end
+
+if vis==1
+    %disp(R);
+    visualizeCodes(R, cornerSize);
+
+
 end
 
-R = rmfield(R, {'FilledImage', 'isQuad', 'passCode', 'orientation'});
+if isfield(R, 'passCode')
+    R = rmfield(R, {'FilledImage', 'isQuad', 'passCode', 'orientation'});
+end
+%R = rmfield(R, {'FilledImage', 'isQuad', 'orientation'});
+
+
+Rnumber = [];
+for rIdx = 1:size(R,1)
+    %disp(R(rIdx,1).number);
+    Rnumber = [Rnumber R(rIdx,1).number];
+end
+%disp("Rnumber");
+%disp(Rnumber == 12740);
+disp(Rnumber);
+
+
 
 hold off;
 %%

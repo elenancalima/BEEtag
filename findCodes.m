@@ -1,0 +1,249 @@
+function R = findCodes(BW, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo)
+% extract binary blobs and measure area
+
+%BW2 = bwareaopen(~BW,sizeThreshDef(1),8);
+cc = bwconncomp(BW, 8);
+
+
+%cc = bwconncomp(BW, 8);
+%disp(cc);
+area = cellfun(@numel,cc.PixelIdxList);
+%disp('area');
+%disp(area);
+
+% threshold blobs by area
+below_min = area  < sizeThreshDef(1);
+above_max = area > sizeThreshDef(2);
+
+% remove blobs with areas out of bounds
+oob = below_min | above_max;
+
+%disp('before');
+%disp(cc);
+%disp(oob);
+if any(oob)
+    cc.PixelIdxList(oob) = [];
+    cc.NumObjects = cc.NumObjects - sum(oob);
+    area(oob) = [];
+else
+    disp('No sufficiently large what regions detected - try changing thresholding values for binary image threshold (thresh) or tag size (sizeThresh)');
+    return
+end
+
+%disp('after');
+%disp(cc);
+%disp(oob);
+
+R=regionprops(cc, 'Centroid','Area','BoundingBox','FilledImage');
+
+%R = regionprops(BW, 'Centroid','Area','BoundingBox','FilledImage');
+%% Set size threshold for tags if supplied
+
+%     if numel(sizeThresh) == 1
+%
+%         R = R([R.Area] > sizeThresh);
+%
+%     elseif numel(sizeThresh) == 2
+%
+%         R =  R([R.Area] > sizeThresh(1) & [R.Area] < sizeThresh(2));
+%
+%     else
+%
+%         disp('sizeThresh has an incorrect numbers of elements: Please supply either a single number or a two-element numeric vector');
+%         return;
+%
+%     end
+%
+%     if isempty(R)
+%
+%         disp('No sufficiently large what regions detected - try changing thresholding values for binary image threshold (thresh) or tag size (sizeThresh)');
+%         return
+%
+%     end
+
+%% Find white regions that are potentially tags
+for i = 1:numel(R)
+
+    try
+        warning('off', 'all');
+        [isq,cnr] = fitquad( R(i).BoundingBox, R(i).FilledImage);
+        warning('on', 'all');
+        R(i).isQuad = isq;
+
+    catch
+        R(i).isQuad = 0;
+        continue
+
+    end
+
+    if isq
+
+        R(i).corners = cnr;
+
+    end
+end
+
+%Subset to quads
+%disp("R");
+%disp(R);
+%disp(size(R));
+if (size(R,1) > 0)
+    R = R(logical([R.isQuad]));
+end
+
+%% Loop over all white regions that could be squares, and check for valid tags
+
+if isempty(R)
+
+    %disp('No potentially valid tag regions found')
+    return
+
+end
+
+for i=1:numel(R)
+
+    corners = R(i).corners;
+    cornersP = [corners(2,:) ;corners(1,:)];
+    tform = maketform('projective', cornersP',[ 0 0;  1 0;  1  1;  0 1]);
+    udata = [0 1];  vdata = [0 1];
+
+    hold on
+
+    for bb = 1:4
+
+        if (vis == 1)
+            plot(cornersP(1,bb), cornersP(2,bb),'g.', 'MarkerSize', cornerSize)
+        end
+
+    end
+
+    %Set up original coordinates in grid
+    x = [5.5/7 4.5/7 3.5/7 2.5/7 1.5/7];
+    %x = [5.5/9 4.5/9 3.5/9 2.5/9 1.5/9] + 1/9;
+    xp = [repmat(x(1), 5, 1) ;repmat(x(2), 5, 1);repmat(x(3), 5, 1);repmat(x(4), 5, 1);repmat(x(5), 5, 1)];
+    P = [xp  repmat(x,1,5)'];
+    f = [ 0 0;  0 1;  1  1;  1 0];
+    %disp('pcords');
+    %disp(P);
+    %P(:,2) = P(:,2) + 0.1/7;
+    %P(:,1) = P(:,1) - 0.1/7;
+    pts = tforminv(tform,P);
+    pts = round(pts);
+    R(i).pts = pts;
+
+    hold on;
+
+
+    %Extract local pixel values around points
+    ptvals = [];
+
+    for aa = 1:numel(pts(:,1))
+
+        cur = pts(aa,:);
+        cur = fliplr(cur);
+        %disp(cur(1));
+        %disp(cur(2));
+
+        try
+
+            %ptvals(aa) = BW(cur(1),cur(2));
+            %disp(ptvals(aa))
+
+            %Comment line below in to use median of 9 adjacent pixels
+            %instead of single pixel value
+            ptvals(aa) = median(reshape(BW((cur(1)-1):(cur(1)+1),(cur(2)-1):(cur(2)+1))',1,9));
+            %%%%%ptvals(aa) = median(reshape(BW((cur(1)-2):(cur(1)+2),(cur(2)-2):(cur(2)+2))',1,25));
+        catch
+
+            continue
+
+        end
+
+    end
+    %disp(R(i));
+    %disp(numel(ptvals));
+    %disp(ptvals);
+    %dummy = input("check ptvals");
+
+
+    % Check pixel values for valid codes
+    if numel(ptvals) == 25
+
+        if trackMode == 0
+
+            code = [ptvals(1:5);ptvals(6:10);ptvals(11:15);ptvals(16:20);ptvals(21:25)];
+            code = fliplr(code);
+            [pass code orientation] = checkOrs25(code);
+            %number = bin2dec(num2str(code(1:15)));
+            R(i).passCode = pass;
+            R(i).code = code;
+            R(i).orientation = orientation;
+
+        elseif trackMode == 1
+
+            [pass code orientation] = permissiveCodeTracking(imo, pts);
+            R(i).passCode = pass;
+            R(i).code = code;
+            R(i).orientation = orientation;
+
+        end
+
+    else
+        R(i).passCode = 0;
+        R(i).code = [];
+        R(i).orientation = NaN;
+    end
+
+end
+
+
+%% Remove invalid tags and find tag front
+R = R([R.passCode]==1);
+
+
+% Tag orientation
+for i=1:numel(R)
+    %%
+    R(i).number = bin2dec(num2str(R(i).code(1:15)));
+
+    %Plot the corners
+    corners = R(i).corners;
+    cornersP = [corners(2,:) ;corners(1,:)];
+    tform = maketform('projective', cornersP',[ 0 0;  1 0;  1  1;  0 1]);
+    udata = [0 1];  vdata = [0 1];
+
+
+    %%
+    or = R(i).orientation;
+    if or == 1
+        ind = [1 2];
+    elseif or == 2
+        ind = [2 3];
+    elseif or ==3
+        ind = [3 4];
+    elseif or ==4
+        ind = [1 4];
+    end
+
+    frontX = mean(cornersP(1,ind));
+    frontY = mean(cornersP(2,ind));
+
+    R(i).frontX = frontX;
+    R(i).frontY = frontY;
+    %
+end
+
+%% If supplied, remove codes that aren't part of supplied valid tag list
+
+if ~isempty(validTagList)
+
+    if isempty(R);
+        disp('No Valid Tags Found');
+    else
+        R = R(ismember([R.number], validTagList));
+    end
+
+end
+
+end
+

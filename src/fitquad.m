@@ -8,9 +8,11 @@ function [isQuad,corners] = fitquad(bbox, mask)
     corners = [];
     % remove small spurs in edge image (holes in mask) that mess things up
     % faster to do it only on potential regions than on the whole image
-    mask = padarray( mask, [3,3] );
-    mask = imclose( mask, strel('disk',2) );
-    mask = mask(4:end-3,4:end-3);
+    mask = padarray( mask, [4,4] );
+    %%%%%%%mask = imclose( mask, strel('disk',1) );
+    %%%%%%%mask = imopen( mask, strel('disk',1) );
+
+    mask = mask(5:end-4,5:end-4);
     % trace the perimeter
     seedPoint = find( mask, 1 );
     [sy,sx] = ind2sub( size(mask), seedPoint );  

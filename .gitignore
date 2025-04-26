@@ -1,0 +1,12 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.dxf
+*.avi
+*.mp4
+*.jpg
+*.tif
+*.png
+dxf_samples/*
+testVid/*

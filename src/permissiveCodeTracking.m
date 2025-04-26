@@ -10,10 +10,10 @@ ptvals = [];
 for aa = 1:numel(pts(:,1))
     cur = pts(aa,:);
     cur = fliplr(cur);
-    
-    ptvals(aa) = imo(cur(1),cur(2));
+    %ptvals(aa) = imo(cur(1),cur(2));
+    %disp(ptvals(aa))
     %Average over nine pixels
-    %ptvals(aa) = median(reshape(BW((cur(1)-1):(cur(1)+1),(cur(2)-1):(cur(2)+1))',1,9));
+    ptvals(aa) = median(reshape(imo((cur(1)-1):(cur(1)+1),(cur(2)-1):(cur(2)+1))',1,9));
     %Comment in to use only average
     
 end
@@ -22,7 +22,7 @@ codeo = [ptvals(1:5);ptvals(6:10);ptvals(11:15);ptvals(16:20);ptvals(21:25)];
 codeo = fliplr(codeo);
 codesc = codeo - min(min(codeo));
 codesc = codesc/max(max(codesc));
-threshes = 0.5;
+threshes = 0.4;
 codedat = struct();
 
 %%

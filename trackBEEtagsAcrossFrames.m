@@ -1,5 +1,6 @@
 %% Beta/example code to track beetags across all frames of a video
 
+codelist = [];
 %codelist = [109 36]; %List of codes in the frame - supplying this is more robust, but optional
 
 [filename pathname] = uigetfile('*'); %User-specified file input - this can be modified to be automated if you need to track over lots of files
@@ -7,6 +8,7 @@ mov = VideoReader([pathname filename]); %Make a VideoReader object for the movie
 
 nframes = mov.NumberOfFrames; %how many frames are in the video?
 
+%nframes = 20; %debug
 
 %Create empty frame for tracking output
 trackingData = struct();
@@ -22,8 +24,11 @@ for i = 1:nframes
     
     %example 1, maybe a little more robust but slower
     
-    F = locateCodes(im, 'threshMode', 1, 'bradleyFilterSize', [15 15], 'bradleyThreshold', 3);
-    
+    %imr = bradley(rgb2gray(im), [6 6], 3);
+    F = locateCodes(im, 'sizeThresh', [500, 2000], 'threshMode', 1, ...
+        'bradleyFilterSize', [7 8; 8 7; 13 13], ...
+    'bradleyThreshold', [1 2]);
+    %F = locateCodes(im, 'robustTrack', im, 'sizeThresh', [500, 2000], 'threshMode', 1, 'bradleyFilterSize', [6 6; 7 7; 8 8; 13 13; 14 14; 15 15; 39 39], 'bradleyThreshold', 2);
     
     %example option 2, faster, simpler - just uses a simple threshold value instead
     %of doing adaptive filtering, less good for inhomogenously lit images
@@ -37,10 +42,19 @@ end
 
 
 %% if there's no 'codelist' object defined, extract it from all the unique codes tracked in the movie
-if ~exist('codelist')
+if size(codelist,2) < 1
     for i = 1:nframes
         %for i = 1:numel(trackingData)
-        curNumbers = [trackingData(i).F.number];
+        %disp(trackingData(i).F);
+        R = trackingData(i).F;
+        Rnumber = [];
+        for rIdx = 1:size(R,1)
+            %disp(R(rIdx,1).number);
+            Rnumber = [Rnumber R(rIdx,1).number];
+        end
+
+
+        curNumbers = [Rnumber];
         %%
         if i == 1
             allNumbers = [] ;
@@ -48,19 +62,38 @@ if ~exist('codelist')
             allNumbers = [allNumbers curNumbers];
         end
         codelist = unique(allNumbers);
+        %disp(codelist);
     end
 end
 %%
+disp(codelist);
 disp('rearranging data into easier format');
 trackingDataReshaped = struct();
 for i = 1:nframes
     %%
     F = trackingData(i).F;
+    R = F;
+    Rnumber = [];
+    for rIdx = 1:size(R,1)
+        %disp(R(rIdx,1).number);
+        Rnumber = [Rnumber R(rIdx,1).number];
+    end
+
     for j = 1:numel(codelist)
         %%
         if ~isempty(F)
-            FS = F([F.number] == codelist(j));
+            FS = F(Rnumber == codelist(j));
+            %disp("FSsize")
+            %disp(size(FS));
+            if(size(FS,1) > 1)
+                FS = FS(1,1);
+            end
+            %FS = FS(1,1);
             if ~isempty(FS)
+                %disp("FS");
+                %disp(FS);
+                %disp("FS1.Centroid");
+                %disp(FS(1).Centroid);
                 trackingDataReshaped(j).CentroidX(i) = FS.Centroid(1);
                 trackingDataReshaped(j).CentroidY(i) = FS.Centroid(2);
                 trackingDataReshaped(j).FrontX(i) = FS.frontX;
@@ -95,12 +128,14 @@ for i = 1:nframes
     imshow(im);
     hold on;
     for j = 1:numel(TD)
-        if numel(TD(j).CentroidX) >= i & ~isempty(TD(j).CentroidX(i))
-            try
-            plot([TD(j).CentroidX(i) TD(j).FrontX(i)], [TD(j).CentroidY(i) TD(j).FrontY(i)], 'b-','LineWidth', 3);
-            text(TD(j).CentroidX(i), TD(j).CentroidY(i), num2str(TD(j).number(i)),'FontSize', 25, 'Color', 'r');
-            catch
-                continue
+        if isfield(TD(j),"CentroidX")
+            if numel(TD(j).CentroidX) >= i & ~isempty(TD(j).CentroidX(i))
+                try
+                plot([TD(j).CentroidX(i) TD(j).FrontX(i)], [TD(j).CentroidY(i) TD(j).FrontY(i)], 'b-','LineWidth', 3);
+                text(TD(j).CentroidX(i), TD(j).CentroidY(i), num2str(TD(j).number(i)),'FontSize', 25, 'Color', 'r');
+                catch
+                    continue
+                end
             end
         end
     end
@@ -112,3 +147,6 @@ end
 
 close(vidObj);
 
+for sID = 1:size(TD,2)
+    writestruct(TD(1,sID),sprintf('structTest_%03d.xml',sID));
+end
