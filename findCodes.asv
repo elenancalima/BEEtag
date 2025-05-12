@@ -1,15 +1,28 @@
-function R = findCodes(BW, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo)
+function R = findCodes(BW, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo, varargin)
+
+% See if permissive tag finding is enabled
+listM = strcmp('permissive', varargin);
+
+if sum(listM) == 0
+    permissiveMode = 0;
+else
+    permissiveMode = 1;
+    permissiveThreshold = cell2mat(varargin(find(listM == 1) + 1));
+end
+
+
+
 % extract binary blobs and measure area
 
-BW2 = bwareaopen(BW,sizeThreshDef(1),conn)bwareaopen(BW,P,conn)
-cc = bwconncomp(~BW, 4);
+%BW2 = bwareaopen(~BW,sizeThreshDef(1),8);
+cc = bwconncomp(BW, 8);
 
 
 %cc = bwconncomp(BW, 8);
 %disp(cc);
 area = cellfun(@numel,cc.PixelIdxList);
-disp('area');
-disp(area);
+%disp('area');
+%disp(area);
 
 % threshold blobs by area
 below_min = area  < sizeThreshDef(1);
@@ -18,7 +31,7 @@ above_max = area > sizeThreshDef(2);
 % remove blobs with areas out of bounds
 oob = below_min | above_max;
 
-disp('before');
+%disp('before');
 %disp(cc);
 %disp(oob);
 if any(oob)
@@ -30,7 +43,7 @@ else
     return
 end
 
-disp('after');
+%disp('after');
 %disp(cc);
 %disp(oob);
 
@@ -84,9 +97,9 @@ for i = 1:numel(R)
 end
 
 %Subset to quads
-disp("R");
-disp(R);
-disp(size(R));
+%disp("R");
+%disp(R);
+%disp(size(R));
 if (size(R,1) > 0)
     R = R(logical([R.isQuad]));
 end
@@ -95,7 +108,7 @@ end
 
 if isempty(R)
 
-    disp('No potentially valid tag regions found')
+    %disp('No potentially valid tag regions found')
     return
 
 end
@@ -119,11 +132,12 @@ for i=1:numel(R)
 
     %Set up original coordinates in grid
     x = [5.5/7 4.5/7 3.5/7 2.5/7 1.5/7];
+    %x = [5.5/9 4.5/9 3.5/9 2.5/9 1.5/9] + 1/9;
     xp = [repmat(x(1), 5, 1) ;repmat(x(2), 5, 1);repmat(x(3), 5, 1);repmat(x(4), 5, 1);repmat(x(5), 5, 1)];
     P = [xp  repmat(x,1,5)'];
     f = [ 0 0;  0 1;  1  1;  1 0];
-    disp('pcords');
-    disp(P);
+    %disp('pcords');
+    %disp(P);
     %P(:,2) = P(:,2) + 0.1/7;
     %P(:,1) = P(:,1) - 0.1/7;
     pts = tforminv(tform,P);
@@ -151,6 +165,7 @@ for i=1:numel(R)
             %Comment line below in to use median of 9 adjacent pixels
             %instead of single pixel value
             ptvals(aa) = median(reshape(BW((cur(1)-1):(cur(1)+1),(cur(2)-1):(cur(2)+1))',1,9));
+            %%%%%ptvals(aa) = median(reshape(BW((cur(1)-2):(cur(1)+2),(cur(2)-2):(cur(2)+2))',1,25));
         catch
 
             continue
@@ -158,10 +173,10 @@ for i=1:numel(R)
         end
 
     end
-    disp(R(i));
-    disp(numel(ptvals));
-    disp(ptvals);
-    dummy = input("check ptvals");
+    %disp(R(i));
+    %disp(numel(ptvals));
+    %disp(ptvals);
+    %dummy = input("check ptvals");
 
 
     % Check pixel values for valid codes
@@ -171,7 +186,7 @@ for i=1:numel(R)
 
             code = [ptvals(1:5);ptvals(6:10);ptvals(11:15);ptvals(16:20);ptvals(21:25)];
             code = fliplr(code);
-            [pass code orientation] = checkOrs25(code);
+            [pass code orientation] = checkOrs25(code, varargin);
             %number = bin2dec(num2str(code(1:15)));
             R(i).passCode = pass;
             R(i).code = code;
@@ -238,7 +253,14 @@ if ~isempty(validTagList)
     if isempty(R);
         disp('No Valid Tags Found');
     else
-        R = R(ismember([R.number], validTagList));
+        if permissiveMode == 0
+            R = R(ismember([R.number], validTagList));
+        else
+            % loop over validTagList
+            % filter R with R.number that is within difference of 
+            % permissiveTrhe
+            % leave R with 
+        end
     end
 
 end

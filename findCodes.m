@@ -1,4 +1,17 @@
-function R = findCodes(BW, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo)
+function R = findCodes(BW, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo, varargin)
+
+% See if permissive tag finding is enabled
+listM = strcmp('permissive', varargin);
+
+if sum(listM) == 0
+    permissiveMode = 0;
+else
+    permissiveMode = 1;
+    permissiveThreshold = cell2mat(varargin(find(listM == 1) + 1));
+end
+
+
+
 % extract binary blobs and measure area
 
 %BW2 = bwareaopen(~BW,sizeThreshDef(1),8);
@@ -173,7 +186,7 @@ for i=1:numel(R)
 
             code = [ptvals(1:5);ptvals(6:10);ptvals(11:15);ptvals(16:20);ptvals(21:25)];
             code = fliplr(code);
-            [pass code orientation] = checkOrs25(code);
+            [pass code orientation] = checkOrs25(code, varargin);
             %number = bin2dec(num2str(code(1:15)));
             R(i).passCode = pass;
             R(i).code = code;
@@ -240,7 +253,34 @@ if ~isempty(validTagList)
     if isempty(R);
         disp('No Valid Tags Found');
     else
-        R = R(ismember([R.number], validTagList));
+        if permissiveMode == 0
+            R = R(ismember([R.number], validTagList));
+        else
+            % loop over validTagList
+            % each item is targetTag
+            % filter R with R.number
+            % that createCode(R.number) is similar to createCode(targetTag)
+            % (Both are arrays; Being similar means pariwise distance is within difference of
+            % permissiveTheshold to targetTag)
+            % and if similar, assume that the R.number was misidentified
+            % and update that R.number to that targetTag
+            for i = 1:length(validTagList)
+                targetTag = validTagList(i);
+                targetCode = createCode(targetTag);
+                for j = 1:length(R.number)
+                    candidateTag = R.number(j);
+                    candidateCode = createCode(candidateTag); % Code for candidate
+
+                    % Compute pairwise distance (assuming simple absolute difference)
+                    distance = sum(abs(candidateCode - targetCode));
+
+                    if distance <= permissiveThreshold
+                        % If so, update R.number
+                        R.number(j) = targetTag;
+                    end
+                end
+            end
+        end
     end
 
 end

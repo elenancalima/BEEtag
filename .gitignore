@@ -8,5 +8,8 @@
 *.jpg
 *.tif
 *.png
+*.csv
+*.xml
+*.mat
 dxf_samples/*
 testVid/*

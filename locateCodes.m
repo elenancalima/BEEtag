@@ -227,7 +227,7 @@ end
 
 %% Find contiguous white regions
 
-R = findCodes(BW, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo);
+R = findCodes(BW, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo, varargin);
 
 %disp('R before');
 %disp(R);
@@ -238,9 +238,9 @@ if nrowSMP * ncolT > 1
         %disp(smpIdx);
         %imshow(altBW{smpIdx,1});
         %dummy=input('check image');
-        tempR = findCodes(altBW{smpIdx,1}, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo);
+        tempR = findCodes(altBW{smpIdx,1}, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo, varargin);
         %disp(tempR);
-        altR{smpIdx,1} = findCodes(altBW{smpIdx,1}, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo);
+        altR{smpIdx,1} = findCodes(altBW{smpIdx,1}, sizeThreshDef, vis, cornerSize, trackMode, validTagList, imo, varargin);
         %disp(altR{smpIdx,1});
     end
     %disp(altR);
