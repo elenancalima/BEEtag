@@ -1,7 +1,7 @@
 %% Beta/example code to track beetags across all frames of a video
 
 codelist = [];
-codelist = [9557 9170 8016 6893 13235 12740];
+%codelist = [9557 9170 8016 6893 13235 12740];
 %codelist = [109 36]; %List of codes in the frame - supplying this is more robust, but optional
 
 [filename pathname] = uigetfile('*'); %User-specified file input - this can be modified to be automated if you need to track over lots of files
@@ -28,7 +28,10 @@ for i = 1:nframes
     %imr = bradley(rgb2gray(im), [6 6], 3);
     F = locateCodes(im, 'sizeThresh', [500, 2000], 'threshMode', 1, ...
         'bradleyFilterSize', [7 8; 8 7; 13 13], ...
-        'bradleyThreshold', [1 2], 'tagList', codelist, 'permissiveMode', 2);
+        'bradleyThreshold', [1 2]);
+    %F = locateCodes(im, 'sizeThresh', [500, 2000], 'threshMode', 1, ...
+    %    'bradleyFilterSize', [7 8; 8 7; 13 13], ...
+    %    'bradleyThreshold', [1 2], 'tagList', codelist, 'permissiveMode', 2);
     %F = locateCodes(im, 'robustTrack', im, 'sizeThresh', [500, 2000], 'threshMode', 1, 'bradleyFilterSize', [6 6; 7 7; 8 8; 13 13; 14 14; 15 15; 39 39], 'bradleyThreshold', 2);
 
     %example option 2, faster, simpler - just uses a simple threshold value instead
