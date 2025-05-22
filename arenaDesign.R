@@ -15,7 +15,7 @@ source("laserCuttingFunctions.R")
 kerf <- 0.2
 spacing <- 7
 baseLength <- 33
-baseWidth <- 38
+baseWidth <- 33
 
 0:30 * (spacing + baseLength) -> verticalGrid
 0:30 * (spacing + baseWidth) -> horizontalGrid
@@ -45,10 +45,17 @@ baseOne <- function(baseUp)
   baseVec
 }
 
-for (i in 1:4)
+for (i in 1:8)
 {
   baseOne(baseUp=verticalGrid[i]) %>% addTo(partList) -> partList
 }
+
+
+
+writeDXF(partList, "PolsTest1mm.DXF")
+
+partList <- list()
+
 
 
 # and 4 different rectangles for the chamber wall.
@@ -67,6 +74,8 @@ for (i in 1:4)
 {
   wallOne(wallUp=verticalGrid[i]) %>% addTo(partList) -> partList
 }
+
+
 
 
 # and 4 circles for chambers
@@ -90,7 +99,7 @@ chamberOne(chamberRadius=11.5/2, chamberUp=verticalGrid[4]) %>% addTo(partList) 
 
 # And the entrance corridor
 corridorWidth <- 1.7  # note that the 'Width' is x-axis and 'Length' is y-axis here. 
-corridorLength <- 1.2 # 'Length' here will determine the 'width of the corridor' for an ant
+corridorLength <- 3 # 'Length' here will determine the 'width of the corridor' for an ant
 
 corridorOne <- function(corridorUp)
 {
@@ -110,7 +119,7 @@ for (i in 1:4)
 
 # And the entrance plug; this is a custom shape
 plugWidth <- 1.4
-plugLength <- 1.1
+plugLength <- corridorLength - 0.1
 handleWidth <- 5
 handleLength <- 33
 combinedPartNum <- 5
@@ -133,6 +142,12 @@ translateVecData(combinedVec, combinedOrigin) -> combinedVec
 
 combinedVec %>% addTo(partList) -> partList
 
+combinedVec %>% translateVecData(c(0, verticalGrid[2])) %>% addTo(partList) -> partList
+combinedVec %>% translateVecData(c(0, verticalGrid[3])) %>% addTo(partList) -> partList
+combinedVec %>% translateVecData(c(0, verticalGrid[4])) %>% addTo(partList) -> partList
 
 
-writeDXF(partList, "PolsTest.DXF")
+writeDXF(partList, "PolsTest3mm.DXF")
+
+
+
