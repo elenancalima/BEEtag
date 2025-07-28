@@ -153,7 +153,18 @@ end
 
 %Do B-W conversion
 if threshMode == 0
-    BW=im2bw(GRAY, thresh);
+    ncolT = size(thresh,2);
+    nrowSMP = 1;
+    BW = imbinarize(GRAY, thresh(1));
+    if ncolT > 1
+        altBW = cell(ncolT - 1);
+        for tIdx = 2:ncolT
+            altBW{tIdx-1}=imbinarize(GRAY, thresh(tIdx));
+        end
+    end
+
+
+
 elseif threshMode  == 1
     nrowSMP = size(smP,1);
     ncolT = size(brT,2);
@@ -193,8 +204,13 @@ if sum(trackM) == 0
     trackMode = 0;
     imo = 0;
 else
-    trackMode = 1;
-    imo = cell2mat(varargin(find(trackM == 1) + 1));
+    if cell2mat(varargin(find(trackM == 1) + 1)) == 2
+        trackMode = 2;
+        imo = 0;
+    else
+        trackMode = 1;
+        imo = cell2mat(varargin(find(trackM == 1) + 1));
+    end
 end
 
 
@@ -247,27 +263,27 @@ if nrowSMP * ncolT > 1
 end
 
 
-    if nrowSMP * ncolT > 1
-        %disp(altR);
-        for smpIdx = 1:(nrowSMP * ncolT - 1)
-            %visualizeCodes(altR{smpIdx,1}, cornerSize);
-            %disp("R");
-            %disp(R);
-            %disp(size(R));
-            %disp("altR");
-            %disp(altR{smpIdx,1});
-            %disp(size(altR{smpIdx,1}));
-            if size(R,1) > 0
-                if size(altR{smpIdx,1},1) > 0
-                    R = [R ; altR{smpIdx,1}];
-                end
-            else
-                R = altR{smpIdx,1};
+if nrowSMP * ncolT > 1
+    %disp(altR);
+    for smpIdx = 1:(nrowSMP * ncolT - 1)
+        %visualizeCodes(altR{smpIdx,1}, cornerSize);
+        %disp("R");
+        %disp(R);
+        %disp(size(R));
+        %disp("altR");
+        %disp(altR{smpIdx,1});
+        %disp(size(altR{smpIdx,1}));
+        if size(R,1) > 0
+            if size(altR{smpIdx,1},1) > 0
+                R = [R ; altR{smpIdx,1}];
             end
+        else
+            R = altR{smpIdx,1};
         end
     end
+end
 
-    
+
 %% Optional code visualization
 
 
@@ -288,11 +304,15 @@ end
 Rnumber = [];
 for rIdx = 1:size(R,1)
     %disp(R(rIdx,1).number);
-    Rnumber = [Rnumber R(rIdx,1).number];
+    %disp(size(Rnumber));
+    %disp(size(R(rIdx,1).number));
+    if size(R(rIdx,1).number,1) == 1
+        Rnumber = [Rnumber R(rIdx,1).number];
+    end
 end
 %disp("Rnumber");
 %disp(Rnumber == 12740);
-disp(Rnumber);
+disp(unique(Rnumber));
 
 
 

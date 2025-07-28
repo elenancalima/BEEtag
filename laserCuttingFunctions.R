@@ -14,6 +14,15 @@ drawRectangle <- function(baseWidth, baseLength, baseOrigin, kerfCoef) {
   vecData
 }
 
+plotPartList <- function(partList){
+  map2(partList, seq_along(partList), 
+       ~{ data.frame(.x) %>% mutate(group = .y)}) %>%
+    rbindlist() %>%
+    ggplot(aes(x=x, y=y)) +
+    geom_path(aes(group=group)) +
+    coord_fixed()
+}
+
 generateCirclePoints <- function(center_x, center_y, radius, resolution = 100) {
   # Create a sequence of angles from 0 to 2*pi
   angles <- seq(0, 2 * pi, length.out = resolution + 1)

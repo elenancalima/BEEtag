@@ -199,6 +199,17 @@ for i=1:numel(R)
             R(i).code = code;
             R(i).orientation = orientation;
 
+        elseif trackMode == 2  % accept all white squares
+            code = [ptvals(1:5);ptvals(6:10);ptvals(11:15);ptvals(16:20);ptvals(21:25)];
+            code = fliplr(code);
+            [pass code orientation] = checkOrs25(code, varargin);
+            %number = bin2dec(num2str(code(1:15)));
+            R(i).passCode = 1;
+            R(i).passCodeActual = pass;
+            R(i).code = code;
+            R(i).orientation = orientation;
+            %disp(code);
+
         end
 
     else
@@ -217,7 +228,11 @@ R = R([R.passCode]==1);
 % Tag orientation
 for i=1:numel(R)
     %%
-    R(i).number = bin2dec(num2str(R(i).code(1:15)));
+    %disp("ready");
+    if isempty(R(i).code)
+        R(i).code = randi([0, 1], 1, 25);
+    end
+    R(i).number = bin2dec(num2str(R(i).code));
 
     %Plot the corners
     corners = R(i).corners;
@@ -236,6 +251,8 @@ for i=1:numel(R)
         ind = [3 4];
     elseif or ==4
         ind = [1 4];
+    else
+        ind = [1 2]; % default orientation when code is not read (for white square detection test)
     end
 
     frontX = mean(cornersP(1,ind));

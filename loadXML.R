@@ -5,6 +5,10 @@ library(xml2)
 library(tidyverse)
 library(data.table)
 
+totalFrames <- 50
+maxID <- 344
+
+count <- 1
 loadID <- function(sID)
 {
   xml_data <- read_xml(sprintf("structTest_%03d.xml",sID))
@@ -15,19 +19,26 @@ loadID <- function(sID)
       as.numeric()
   }
   
+  #print(xml_data)
+  
   xml_data %>% xmlExtract("//CentroidX") -> cx
   xml_data %>% xmlExtract("//CentroidY") -> cy
   xml_data %>% xmlExtract("//number") -> nb
   
-  data.table(nb=rep(0,900)) -> xmTable
+  data.table(nb=rep(0,totalFrames)) -> xmTable
+  #print(xmTable)
   xmTable$nb[1:length(nb)] <- nb
+  #print(xmTable)
+  print (count)
+  count <<- count + 1
   colnames(xmTable) <- c(as.character(unique(nb[nb > 0])))
+  #print(xmTable)
   xmTable
 }
 
-loadID(1)
+#loadID(1)
 
-1:6 %>% purrr::map(loadID) -> listXML
+1:maxID %>% purrr::map(loadID) -> listXML
 #cbind list
 listXML %>% 
   purrr::reduce(cbind) -> xmTableFinal

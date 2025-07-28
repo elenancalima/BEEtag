@@ -68,15 +68,21 @@ for i = 1:nframes
 end
 
 %% if there's no 'codelist' object defined, extract it from all the unique codes tracked in the movie
+%disp("codeListSize");
+%disp(size(codelist));
 if size(codelist,2) < 1
-    codeList = codeVisList;
+    %disp("noCodeList");
+    codelist = codeVisList;
 end
 %%
 disp(codeVisList);
+%disp(codelist);
 disp('rearranging data into easier format');
 trackingDataReshaped = struct();
 for i = 1:nframes
     %%
+    %disp("frame:")
+    %disp(i);
     F = trackingData(i).F;
     R = F;
     Rnumber = [];
@@ -84,10 +90,20 @@ for i = 1:nframes
         %disp(R(rIdx,1).number);
         Rnumber = [Rnumber R(rIdx,1).number];
     end
+    Rnumber = unique(Rnumber);
+    %disp("Rnumber:");
+    %disp(Rnumber);
+
+    %disp("codelist");
+    %disp(codelist);
+    %disp(numel(codelist));
 
     for j = 1:numel(codelist)
         %%
+        %disp("codeN");
+        %disp(j);
         if ~isempty(F)
+            %disp("FnotEmpty");
             FS = F(Rnumber == codelist(j));
             %disp("FSsize")
             %disp(size(FS));
@@ -134,6 +150,8 @@ for i = 1:nframes
     imshow(im);
     hold on;
     for j = 1:numel(TD)
+        %disp(j);
+        %disp(TD(j));
         if isfield(TD(j),"CentroidX")
             if numel(TD(j).CentroidX) >= i & ~isempty(TD(j).CentroidX(i))
                 try

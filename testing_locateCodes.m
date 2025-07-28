@@ -85,6 +85,47 @@ locateCodes(test401, 'threshMode',1, 'sizeThresh', [500, 2000], ...
     'bradleyThreshold', [1 3]);
 %}
 
-locateCodes(test401, 'threshMode',1, 'sizeThresh', [500, 2000], ...
-    'bradleyFilterSize', [7 8; 8 7; 9 10; 10 9; 13 14; 14 13; 16 17; 17 16], ...
-    'bradleyThreshold', [1 2 3 4]);
+
+%[filename pathname] = uigetfile('*'); %User-specified file input - this can be modified to be automated if you need to track over lots of files
+%mov = VideoReader([pathname filename]); %Make a VideoReader object for the movie
+%test401 = read(mov, 19);
+
+test401 = imread("Z:\Images_captured_backup\IMAGING\F\image_files_that_will_get_Backedup_on_Synology\Woncheol\Main_HOI_test\Starv1D_gR0019_acclimation\2025_06_09_test_1\betterChoice.png");
+
+R1 = locateCodes(test401, 'threshMode',1, 'vis', 0, 'sizeThresh', [500, 2000], ...
+    'bradleyFilterSize',[21 21], ...
+        'bradleyThreshold', [2 3 4 5 6 7]);
+
+R2 = locateCodes(test401, 'threshMode',1, 'vis', 0, 'sizeThresh', [500, 2000], ...
+    'bradleyFilterSize',[11 11; 13 13; 15 15; 17 17; 19 19], ...
+        'bradleyThreshold', [7]);
+
+R3 = locateCodes(test401, 'threshMode',1, 'vis', 0, 'sizeThresh', [500, 2000], ...
+    'bradleyFilterSize',[11 11;], ...
+        'bradleyThreshold', [2 3 4 5 6]);
+
+R4 = locateCodes(test401, 'threshMode',1, 'vis', 0, 'sizeThresh', [500, 2000], ...
+    'bradleyFilterSize',[13 13; 15 15; 17 17; 19 19], ...
+        'bradleyThreshold', [2]);
+
+R5 = locateCodes(test401, 'threshMode',1, 'colMode', 1, 'sizeThresh', [500, 2000], ...
+    'bradleyFilterSize',[14 14; 15 15; 16 16], ...
+        'bradleyThreshold', [3 4]);
+
+
+Rall = [R1; R2; R3; R4; R5];
+Rall = [R1; R2; R4; R5];
+Rnumber = [];
+for idx=1:size(Rall,1)
+    Rnumber = [Rnumber Rall(idx).number];
+end
+
+disp(unique(Rnumber));
+
+visualizeCodes(Rall, 10);
+
+
+
+
+%locateCodes(test401, 'threshMode',0, 'colMode', 1, 'sizeThresh', [500, 2000], 'thresh', ...
+%    ((30:270) / 300));

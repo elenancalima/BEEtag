@@ -80,9 +80,10 @@ for (i in 1:4)
 
 # and 4 circles for chambers
 chamberEntranceDistance <- 1.5
+chamberRight <- wallWidth - chamberEntranceDistance
 
 chamberOne <- function(chamberRadius, chamberUp){
-  chamberRight <- wallWidth - chamberEntranceDistance
+  
   chamberOrigin <- c(chamberRight - chamberRadius, wallLength/2)
   chamberOrigin <- chamberOrigin + c(horizontalGrid[2], chamberUp)
   
@@ -151,3 +152,164 @@ writeDXF(partList, "PolsTest3mm.DXF")
 
 
 
+
+#### Tag cutter design
+
+partList <- list()
+
+totalWidth <- 20.5
+totalHeight <- 17.5
+bladeWidth <- 10.1
+
+drawRectangle(totalWidth, totalHeight, c(0,0), kerfCoef=1) -> boundaryVec
+drawRectangle(bladeWidth, totalHeight, c(0,0), kerfCoef=1) -> leftBladeVec
+drawRectangle(bladeWidth, totalHeight, c(totalWidth - bladeWidth, 0), kerfCoef=1) -> rightBladeVec
+
+combinedVec <- rbind(boundaryVec, leftBladeVec, rightBladeVec)
+plotCutting(combinedVec)
+
+# custom shape...
+
+combinedVec[c(1,7,3,14,1),] -> combinedVec
+plotCutting(combinedVec)
+
+combinedVec %>% addTo(partList) -> partList
+
+# holding column
+holdingOrigin <- c(-10,5)
+drawRectangle(50, 19, holdingOrigin, kerfCoef=1) -> holdingVec
+holdingVec %>% addTo(partList) -> partList
+
+# screw holes
+drawCircle(2.6, c(-2, 14), kerfCoef=1) -> screwHoleVec1
+drawCircle(2.6, c(28, 14), kerfCoef=1) -> screwHoleVec2
+
+screwHoleVec1 %>% addTo(partList) -> partList
+screwHoleVec2 %>% addTo(partList) -> partList
+
+plotPartList(partList)
+
+writeDXF(partList, "cutter1mm.DXF")
+
+# cover
+partList <- list()
+holdingVec %>% translateVecData(c(0, 25)) %>% addTo(partList) -> partList
+screwHoleVec1 %>% translateVecData(c(0, 25)) %>% addTo(partList) -> partList
+screwHoleVec2 %>% translateVecData(c(0, 25)) %>% addTo(partList) -> partList
+
+plotPartList(partList)
+
+writeDXF(partList, "cutter3mm.DXF")
+
+
+# and the backbone
+partList <- list()
+screwHoleVec1 %>% addTo(partList) -> partList
+screwHoleVec2 %>% addTo(partList) -> partList
+
+drawRectangle(70, 19, holdingOrigin, kerfCoef=1) -> backboneVec
+
+backboneVec %>% translateVecData(c(-15,0)) %>% addTo(partList) -> partList
+
+plotPartList(partList)
+
+writeDXF(partList, "cutter5mm.DXF")
+
+
+
+
+
+# kerfCoef = 1 means the kerf is outside of the polygon 
+# (to not remove anything inside the polygon)
+
+# kerfCoef = -1 means the kerf is inside of the polygon
+# (to not remove anything outside the polygon)
+
+# kerfCoef = 0 means the kerf follows the line
+# (to remove same amount of material inside and outside the polygon)
+
+source("laserCuttingFunctions.R")
+partList <- list()
+
+drawRectangle(20,10,c(0,0),1) -> rect1
+drawRectangle(30,10,c(0,10),1) -> rect2
+
+rbind(rect1, rect2) -> combinedVec
+plotCutting(combinedVec)
+combinedVec[c(5,9,8,7,3,2,5),] -> newVec
+plotCutting(newVec)
+
+drawCircle(2.5, c(10,5),-1) -> hole1
+
+
+#rect1 %>% addTo(partList) -> partList
+#rect2 %>% addTo(partList) -> partList
+newVec %>% addTo(partList) -> partList
+hole1 %>% addTo(partList) -> partList
+
+plotPartList(partList)
+
+
+
+### diffuser designs
+
+partList <- list()
+
+# outer stand
+drawRectangle(27,15,c(0,0),1) -> outer
+drawRectangle(17,3,c(5,-3),-1) -> basePlug
+
+rbind(outer, basePlug) -> combinedOuter
+
+plotCutting(combinedOuter)
+
+combinedOuter[c(5,4,3,2,8,7,10,9,5),] -> combinedOuter
+plotCutting(combinedOuter)
+
+combinedOuter %>% addTo(partList) -> partList
+
+
+#stand hole
+drawRectangle(23,11,c(2,2),1) -> hole
+hole %>% addTo(partList) -> partList
+
+
+plotPartList(partList)
+
+
+# base
+drawRectangle(23,23,c(2,-30),1) -> base
+
+# base hole
+drawRectangle(17,3, c(5,-30-kerf),-1) -> baseHole
+
+rbind(base, baseHole) -> combinedBase
+plotCutting(combinedBase)
+
+combinedBase[c(5,4,3,2,7,8,9,10,5),] -> combinedBase
+plotCutting(combinedBase)
+
+combinedBase %>% addTo(partList) -> partList
+
+plotPartList(partList)
+
+writeDXF(partList, "diffuserStand3mm.DXF")
+
+
+
+
+##### diffuser cover
+
+partList <- list()
+
+# outer
+drawRectangle(81,81,c(0,0),1) -> outer
+
+# hole
+drawCircle(15.1,c(40.5,40.5),-1) -> hole
+
+outer %>% addTo(partList) -> partList
+hole %>% addTo(partList) -> partList
+plotPartList(partList)
+
+writeDXF(partList, "diffuserCover3mm.DXF")
