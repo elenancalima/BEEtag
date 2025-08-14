@@ -1,0 +1,7 @@
+% webcam test
+cam = webcam('GENERAL - UVC');
+img = snapshot(cam);
+locateCodes(img, 'threshMode',1, 'colMode', 1, 'sizeThresh', [500, 2000], ...
+    'bradleyFilterSize',[15 15], ...
+        'bradleyThreshold', [3]);
+
