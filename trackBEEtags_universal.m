@@ -38,11 +38,12 @@ for i = 1:nframes
     disp(['Tracking frame ', num2str(i), ' of ', num2str(nframes)]);
     im = read_frame_fcn(i); % Use the function handle to get the current frame
     
-    F = locateCodes(im, 'sizeThresh', [500, 2000], 'threshMode', 1, ...
-        'bradleyFilterSize', [7 8; 8 7; 13 13], ...
-        'bradleyThreshold', [1 2]);
+    F = locateCodes(im, 'sizeThresh', [500, 3200], 'threshMode', 1, ...
+        'bradleyFilterSize', [5 5; 7 8; 8 7; 13 13; 17 17; 22 22; 27 27], ...
+        'bradleyThreshold', [0 1 2 4 6 9 13]);
         
     trackingData(i).F = F;
+    save('trackingData_WIP.mat', 'trackingData')
 end
 
 % The rest of the script (Reshaping, Saving, Replay) is largely the same,

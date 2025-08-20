@@ -76,18 +76,18 @@ R=regionprops(cc, 'Centroid','Area','BoundingBox','FilledImage');
 
 %% Find white regions that are potentially tags
 for i = 1:numel(R)
-
-    try
-        warning('off', 'all');
+        R(i).isQuad = 0;
+    %try
+        %warning('off', 'all');
         [isq,cnr] = fitquad( R(i).BoundingBox, R(i).FilledImage);
-        warning('on', 'all');
+        %warning('on', 'all');
         R(i).isQuad = isq;
 
-    catch
-        R(i).isQuad = 0;
-        continue
+   % catch
+        
+        %continue
 
-    end
+    %end
 
     if isq
 
@@ -157,7 +157,7 @@ for i=1:numel(R)
         %disp(cur(1));
         %disp(cur(2));
 
-        try
+        %try
 
             %ptvals(aa) = BW(cur(1),cur(2));
             %disp(ptvals(aa))
@@ -166,11 +166,11 @@ for i=1:numel(R)
             %instead of single pixel value
             ptvals(aa) = median(reshape(BW((cur(1)-1):(cur(1)+1),(cur(2)-1):(cur(2)+1))',1,9));
             %%%%%ptvals(aa) = median(reshape(BW((cur(1)-2):(cur(1)+2),(cur(2)-2):(cur(2)+2))',1,25));
-        catch
+        %catch
 
-            continue
+            %continue
 
-        end
+        %end
 
     end
     %disp(R(i));
