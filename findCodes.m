@@ -12,43 +12,72 @@ end
 
 
 
+%halo = 8;                             % enough to cover connectivity across edges
+%blk  = [256 256];                   % pick a tile size that fits cache/GPU
+
+%fun = @(bs) bwareafilt(bs.data, [sizeThreshDef(1) sizeThreshDef(2)], 8);  % runs on padded block
+
+%L = blockproc(BW, blk, fun, ...
+%    'BorderSize', [halo halo], ...
+%    'PadPartialBlocks', true, ...
+%    'TrimBorder', true);  % returns only the central (non-halo) region per block
+
+L = bwareafilt(BW, [sizeThreshDef(1) sizeThreshDef(2)], 8);
+
+
 % extract binary blobs and measure area
 
 %BW2 = bwareaopen(~BW,sizeThreshDef(1),8);
-cc = bwconncomp(BW, 8);
+%cc = bwconncomp(BW, 8);
 
+%[L, num] = bwlabel(BW, 8);
 
 %cc = bwconncomp(BW, 8);
 %disp(cc);
-area = cellfun(@numel,cc.PixelIdxList);
+%area = cellfun(@numel,cc.PixelIdxList);
+%area = accumarray(L(L>0), 1, [num 1]);
 %disp('area');
 %disp(area);
+%oob  = area < sizeThreshDef(1) | area > sizeThreshDef(2); 
+
+%kill = find(oob);
+%L(ismember(L, kill)) = 0;   % remove those label
+%present = find(~oob);
+
+% Map old labels -> 1..K
+%map = zeros(maxLab+1, 1, 'uint32');            % +1 for background (0)
+%map(1 + present) = uint32(1:numel(present));
+%L = double(map(1 + L));                        % compacted label matrix
+
+% Now regionprops won’t see any “missing labels”
+R = regionprops(L, 'Centroid','Area','BoundingBox','FilledImage');
+
 
 % threshold blobs by area
-below_min = area  < sizeThreshDef(1);
-above_max = area > sizeThreshDef(2);
+%below_min = area  < sizeThreshDef(1);
+%above_max = area > sizeThreshDef(2);
 
 % remove blobs with areas out of bounds
-oob = below_min | above_max;
+%oob = below_min | above_max;
 
 %disp('before');
 %disp(cc);
 %disp(oob);
-if any(oob)
-    cc.PixelIdxList(oob) = [];
-    cc.NumObjects = cc.NumObjects - sum(oob);
-    area(oob) = [];
-else
-    disp('No sufficiently large what regions detected - try changing thresholding values for binary image threshold (thresh) or tag size (sizeThresh)');
-    return
-end
-
+%if any(oob)
+%    cc.PixelIdxList(oob) = [];
+%    cc.NumObjects = cc.NumObjects - sum(oob);
+%    area(oob) = [];
+%else
+%    disp('No sufficiently large what regions detected - try changing thresholding values for binary image threshold (thresh) or tag size (sizeThresh)');
+%    return
+%end
 %disp('after');
 %disp(cc);
 %disp(oob);
 
-R=regionprops(cc, 'Centroid','Area','BoundingBox','FilledImage');
-
+%R=regionprops(cc, 'Centroid','Area','BoundingBox','FilledImage');
+%disp(size(L));
+%R=regionprops(L, 'Centroid','Area','BoundingBox','FilledImage');
 %R = regionprops(BW, 'Centroid','Area','BoundingBox','FilledImage');
 %% Set size threshold for tags if supplied
 
@@ -76,12 +105,18 @@ R=regionprops(cc, 'Centroid','Area','BoundingBox','FilledImage');
 
 %% Find white regions that are potentially tags
 for i = 1:numel(R)
+    %disp(R(i));
         R(i).isQuad = 0;
+        %disp(size(R(i).FilledImage));
+        isq = 0;
+        if (size(R(i).FilledImage,1) > 10 & size(R(i).FilledImage,2) > 10)
+
     %try
         %warning('off', 'all');
-        [isq,cnr] = fitquad( R(i).BoundingBox, R(i).FilledImage);
+            [isq,cnr] = fitquad( R(i).BoundingBox, R(i).FilledImage);
         %warning('on', 'all');
-        R(i).isQuad = isq;
+            R(i).isQuad = isq;
+        end
 
    % catch
         

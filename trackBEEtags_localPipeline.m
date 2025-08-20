@@ -1,6 +1,6 @@
 image_folder_path = 'Z:\Woncheol\HOI_samples_for_BEEtag';
 output_prefix = 'LocalTest';
-trackBEEtags_universal(image_folder_path, output_prefix);
+trackBEEtags_universal(image_folder_path, output_prefix, [15 15], 3);
 
 trackData = load('trackingData_LocalTest_WIP.mat');
 trackData.trackingData;

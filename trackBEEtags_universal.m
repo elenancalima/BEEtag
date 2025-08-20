@@ -1,4 +1,4 @@
-function trackBEEtags_universal(input_path, output_name_prefix)
+function trackBEEtags_universal(input_path, output_name_prefix, bFilterSize, bThreshold)
 
 %% --- 1. Setup Data Source based on Input Type ---
 disp('--- Step 1: Initializing data source ---');
@@ -39,8 +39,8 @@ for i = 1:nframes
     im = read_frame_fcn(i); % Use the function handle to get the current frame
     
     F = locateCodes(im, 'sizeThresh', [500, 3200], 'threshMode', 1, ...
-        'bradleyFilterSize', [5 5; 7 8; 8 7; 13 13; 17 17; 22 22; 27 27], ...
-        'bradleyThreshold', [0 1 2 4 6 9 13]);
+        'bradleyFilterSize', bFilterSize, ...
+        'bradleyThreshold', bThreshold, 'vis', 0);
         
     trackingData(i).F = F;
     save('trackingData_WIP.mat', 'trackingData')

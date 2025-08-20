@@ -13,6 +13,7 @@ function [isQuad,corners] = fitquad(bbox, mask)
     %%%%%%%mask = imopen( mask, strel('disk',1) );
 
     mask = mask(5:end-4,5:end-4);
+    %disp(size(mask));
     % trace the perimeter
     seedPoint = find( mask, 1 );
     [sy,sx] = ind2sub( size(mask), seedPoint );  
@@ -25,6 +26,7 @@ function [isQuad,corners] = fitquad(bbox, mask)
     %bugfix: too small kernel allows small holes and spurs in perimeter to be
     %treated as separate gradient clusters. therefore we need to smooth by a
     %kernel roughly on the order of the size of the smallest quad edge
+    %disp(size(mask));
     kernelSize = floor( min(size(mask))/3 );
     kernel = conv([-1,0,1]/2,fspecial('gaussian',[kernelSize,1],kernelSize/6));
     gradients = imfilter( perim, kernel, 'circular' );
@@ -41,8 +43,9 @@ function [isQuad,corners] = fitquad(bbox, mask)
     seedIdx1 = floor( linspace( 1, size(gradients,1), 5 ) );
     seedIdx2 = seedIdx1 + floor( diff(seedIdx1(1:2))/2 );
     seeds = cat( 3, gradients(seedIdx1(1:4),:), gradients(seedIdx2(1:4),:) );
+    warning('off', 'all');
     [clusteridx,clustermeans] = kmeans( gradients, 4, 'start',seeds, 'emptyaction','drop' );
-    
+    warning('on', 'all');
     nClusters = sum( isfinite( clustermeans(:,1) ) );
     if nClusters ~= 4
         return;

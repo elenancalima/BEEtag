@@ -10,45 +10,72 @@ else
     permissiveThreshold = cell2mat(varargin(find(listM == 1) + 1));
 end
 
+halo = 8;                             % enough to cover connectivity across edges
+blk  = [1024 1024];                   % pick a tile size that fits cache/GPU
+
+fun = @(bs) bwareafilt(bs.data, areaRange, conn);  % runs on padded block
+
+L = blockproc(BWm, blk, fun, ...
+    'BorderSize', [halo halo], ...
+    'PadPartialBlocks', true, ...
+    'TrimBorder', true);  % returns only the central (non-halo) region per block
+
+%L = bwareafilt(BW, [sizeThreshDef(1) sizeThreshDef(2)], 8);
 
 
 % extract binary blobs and measure area
 
 %BW2 = bwareaopen(~BW,sizeThreshDef(1),8);
-cc = bwconncomp(BW, 8);
+%cc = bwconncomp(BW, 8);
 
+%[L, num] = bwlabel(BW, 8);
 
 %cc = bwconncomp(BW, 8);
 %disp(cc);
-area = cellfun(@numel,cc.PixelIdxList);
+%area = cellfun(@numel,cc.PixelIdxList);
+%area = accumarray(L(L>0), 1, [num 1]);
 %disp('area');
 %disp(area);
+%oob  = area < sizeThreshDef(1) | area > sizeThreshDef(2); 
+
+%kill = find(oob);
+%L(ismember(L, kill)) = 0;   % remove those label
+%present = find(~oob);
+
+% Map old labels -> 1..K
+%map = zeros(maxLab+1, 1, 'uint32');            % +1 for background (0)
+%map(1 + present) = uint32(1:numel(present));
+%L = double(map(1 + L));                        % compacted label matrix
+
+% Now regionprops won’t see any “missing labels”
+R = regionprops(L, 'Centroid','Area','BoundingBox','FilledImage');
+
 
 % threshold blobs by area
-below_min = area  < sizeThreshDef(1);
-above_max = area > sizeThreshDef(2);
+%below_min = area  < sizeThreshDef(1);
+%above_max = area > sizeThreshDef(2);
 
 % remove blobs with areas out of bounds
-oob = below_min | above_max;
+%oob = below_min | above_max;
 
 %disp('before');
 %disp(cc);
 %disp(oob);
-if any(oob)
-    cc.PixelIdxList(oob) = [];
-    cc.NumObjects = cc.NumObjects - sum(oob);
-    area(oob) = [];
-else
-    disp('No sufficiently large what regions detected - try changing thresholding values for binary image threshold (thresh) or tag size (sizeThresh)');
-    return
-end
-
+%if any(oob)
+%    cc.PixelIdxList(oob) = [];
+%    cc.NumObjects = cc.NumObjects - sum(oob);
+%    area(oob) = [];
+%else
+%    disp('No sufficiently large what regions detected - try changing thresholding values for binary image threshold (thresh) or tag size (sizeThresh)');
+%    return
+%end
 %disp('after');
 %disp(cc);
 %disp(oob);
 
-R=regionprops(cc, 'Centroid','Area','BoundingBox','FilledImage');
-
+%R=regionprops(cc, 'Centroid','Area','BoundingBox','FilledImage');
+%disp(size(L));
+%R=regionprops(L, 'Centroid','Area','BoundingBox','FilledImage');
 %R = regionprops(BW, 'Centroid','Area','BoundingBox','FilledImage');
 %% Set size threshold for tags if supplied
 
@@ -76,18 +103,24 @@ R=regionprops(cc, 'Centroid','Area','BoundingBox','FilledImage');
 
 %% Find white regions that are potentially tags
 for i = 1:numel(R)
-
-    try
-        warning('off', 'all');
-        [isq,cnr] = fitquad( R(i).BoundingBox, R(i).FilledImage);
-        warning('on', 'all');
-        R(i).isQuad = isq;
-
-    catch
+    %disp(R(i));
         R(i).isQuad = 0;
-        continue
+        %disp(size(R(i).FilledImage));
+        isq = 0;
+        if (size(R(i).FilledImage) ~= [0 0])
 
-    end
+    %try
+        %warning('off', 'all');
+            [isq,cnr] = fitquad( R(i).BoundingBox, R(i).FilledImage);
+        %warning('on', 'all');
+            R(i).isQuad = isq;
+        end
+
+   % catch
+        
+        %continue
+
+    %end
 
     if isq
 
@@ -157,7 +190,7 @@ for i=1:numel(R)
         %disp(cur(1));
         %disp(cur(2));
 
-        try
+        %try
 
             %ptvals(aa) = BW(cur(1),cur(2));
             %disp(ptvals(aa))
@@ -166,11 +199,11 @@ for i=1:numel(R)
             %instead of single pixel value
             ptvals(aa) = median(reshape(BW((cur(1)-1):(cur(1)+1),(cur(2)-1):(cur(2)+1))',1,9));
             %%%%%ptvals(aa) = median(reshape(BW((cur(1)-2):(cur(1)+2),(cur(2)-2):(cur(2)+2))',1,25));
-        catch
+        %catch
 
-            continue
+            %continue
 
-        end
+        %end
 
     end
     %disp(R(i));
@@ -199,6 +232,17 @@ for i=1:numel(R)
             R(i).code = code;
             R(i).orientation = orientation;
 
+        elseif trackMode == 2  % accept all white squares
+            code = [ptvals(1:5);ptvals(6:10);ptvals(11:15);ptvals(16:20);ptvals(21:25)];
+            code = fliplr(code);
+            [pass code orientation] = checkOrs25(code, varargin);
+            %number = bin2dec(num2str(code(1:15)));
+            R(i).passCode = 1;
+            R(i).passCodeActual = pass;
+            R(i).code = code;
+            R(i).orientation = orientation;
+            %disp(code);
+
         end
 
     else
@@ -217,7 +261,11 @@ R = R([R.passCode]==1);
 % Tag orientation
 for i=1:numel(R)
     %%
-    R(i).number = bin2dec(num2str(R(i).code(1:15)));
+    %disp("ready");
+    if isempty(R(i).code)
+        R(i).code = randi([0, 1], 1, 25);
+    end
+    R(i).number = bin2dec(num2str(R(i).code));
 
     %Plot the corners
     corners = R(i).corners;
@@ -236,6 +284,8 @@ for i=1:numel(R)
         ind = [3 4];
     elseif or ==4
         ind = [1 4];
+    else
+        ind = [1 2]; % default orientation when code is not read (for white square detection test)
     end
 
     frontX = mean(cornersP(1,ind));
@@ -257,9 +307,29 @@ if ~isempty(validTagList)
             R = R(ismember([R.number], validTagList));
         else
             % loop over validTagList
-            % filter R with R.number that is within difference of 
-            % permissiveTrhe
-            % leave R with 
+            % each item is targetTag
+            % filter R with R.number
+            % that createCode(R.number) is similar to createCode(targetTag)
+            % (Both are arrays; Being similar means pariwise distance is within difference of
+            % permissiveTheshold to targetTag)
+            % and if similar, assume that the R.number was misidentified
+            % and update that R.number to that targetTag
+            for i = 1:length(validTagList)
+                targetTag = validTagList(i);
+                targetCode = createCode(targetTag);
+                for j = 1:length(R.number)
+                    candidateTag = R.number(j);
+                    candidateCode = createCode(candidateTag); % Code for candidate
+
+                    % Compute pairwise distance (assuming simple absolute difference)
+                    distance = sum(abs(candidateCode - targetCode));
+
+                    if distance <= permissiveThreshold
+                        % If so, update R.number
+                        R.number(j) = targetTag;
+                    end
+                end
+            end
         end
     end
 
