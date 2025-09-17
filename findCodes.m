@@ -38,7 +38,7 @@ L = bwareafilt(BW, [sizeThreshDef(1) sizeThreshDef(2)], 8);
 %area = accumarray(L(L>0), 1, [num 1]);
 %disp('area');
 %disp(area);
-%oob  = area < sizeThreshDef(1) | area > sizeThreshDef(2); 
+%oob  = area < sizeThreshDef(1) | area > sizeThreshDef(2);
 
 %kill = find(oob);
 %L(ismember(L, kill)) = 0;   % remove those label
@@ -106,21 +106,21 @@ R = regionprops(L, 'Centroid','Area','BoundingBox','FilledImage');
 %% Find white regions that are potentially tags
 for i = 1:numel(R)
     %disp(R(i));
-        R(i).isQuad = 0;
-        %disp(size(R(i).FilledImage));
-        isq = 0;
-        if (size(R(i).FilledImage,1) > 10 & size(R(i).FilledImage,2) > 10)
+    R(i).isQuad = 0;
+    %disp(size(R(i).FilledImage));
+    isq = 0;
+    if (size(R(i).FilledImage,1) > 10 & size(R(i).FilledImage,2) > 10)
 
-    %try
+        %try
         %warning('off', 'all');
-            [isq,cnr] = fitquad( R(i).BoundingBox, R(i).FilledImage);
+        [isq,cnr] = fitquad( R(i).BoundingBox, R(i).FilledImage);
         %warning('on', 'all');
-            R(i).isQuad = isq;
-        end
+        R(i).isQuad = isq;
+    end
 
-   % catch
-        
-        %continue
+    % catch
+
+    %continue
 
     %end
 
@@ -194,16 +194,37 @@ for i=1:numel(R)
 
         %try
 
-            %ptvals(aa) = BW(cur(1),cur(2));
-            %disp(ptvals(aa))
+        %ptvals(aa) = BW(cur(1),cur(2));
+        %disp(ptvals(aa))
 
-            %Comment line below in to use median of 9 adjacent pixels
-            %instead of single pixel value
-            ptvals(aa) = median(reshape(BW((cur(1)-1):(cur(1)+1),(cur(2)-1):(cur(2)+1))',1,9));
-            %%%%%ptvals(aa) = median(reshape(BW((cur(1)-2):(cur(1)+2),(cur(2)-2):(cur(2)+2))',1,25));
+        %Comment line below in to use median of 9 adjacent pixels
+        %instead of single pixel value
+
+        % Get the dimensions of the image/matrix
+        [max_rows, max_cols] = size(BW);
+
+        % Define the boundaries of the 3x3 window
+        row_start = cur(1) - 1;
+        row_end   = cur(1) + 1;
+        col_start = cur(2) - 1;
+        col_end   = cur(2) + 1;
+
+        % Check if the entire 3x3 window is within the matrix bounds
+        if (row_start >= 1 && row_end <= max_rows && ...
+                col_start >= 1 && col_end <= max_cols)
+
+            % If valid, proceed with the original operation
+            patch = BW(row_start:row_end, col_start:col_end);
+            ptvals(aa) = median(patch(:));
+
+        else
+            % If any part of the window is out of bounds, set the value to zero
+            ptvals(aa) = 0;
+        end
+        %%%%%ptvals(aa) = median(reshape(BW((cur(1)-2):(cur(1)+2),(cur(2)-2):(cur(2)+2))',1,25));
         %catch
 
-            %continue
+        %continue
 
         %end
 

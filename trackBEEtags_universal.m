@@ -2,19 +2,49 @@ function trackBEEtags_universal(input_path, output_name_prefix, bFilterSize, bTh
 
 %% --- 1. Setup Data Source based on Input Type ---
 disp('--- Step 1: Initializing data source ---');
+disp(input_path);
+disp(isfolder(input_path));
+disp(isfile(input_path));
+
+
+p = input_path;
+
+% 1) Is the Z: drive visible *to MATLAB*?
+disp("Z:\ seen by MATLAB?  " + isfolder('Z:\'));
+system('net use');  % shows mappings for this process
+
+% If Z:\ is not visible here, use the UNC path instead, or remap:
+% system('net use Z: \\server\share');  % <-- replace with your server/share
+
+% 2) Strip hidden cruft that breaks isfile:
+p = replace(p, '"','');              % remove quotes if read from CSV
+p = erase(p, compose("%c",[9 10 13])); % remove tab/newline/carriage return
+p = strip(p);                        % trim spaces
+
+% 3) Check parent folder and enumerate
+[parent, name, ext] = fileparts(p);
+disp("Parent folder exists? " + isfolder(parent));
+d = dir(parent);
+disp("Matching file present? " + any(strcmpi([name ext], {d.name})));
+
+% 4) Final check
+disp("isfile(p): " + isfile(p));
+disp("exist(p,'file'): " + exist(p,'file'));
+
+input_path = p;
 
 if isfolder(input_path)
     % --- Image Folder Mode ---
     disp('Input is a folder. Searching for images...');
     % Get a list of all common image files (add extensions if needed)
     image_files = [dir(fullfile(input_path, '*.png')); ...
-                   dir(fullfile(input_path, '*.jpg')); ...
-                   dir(fullfile(input_path, '*.tif'))];
-    
+        dir(fullfile(input_path, '*.jpg')); ...
+        dir(fullfile(input_path, '*.tif'))];
+
     nframes = numel(image_files);
     % Define a function to read the k-th image from the list
     read_frame_fcn = @(k) imread(fullfile(image_files(k).folder, image_files(k).name));
-    
+
 elseif isfile(input_path)
     % --- Video File Mode ---
     disp('Input is a file. Treating as a video...');
@@ -22,7 +52,7 @@ elseif isfile(input_path)
     nframes = mov.NumberOfFrames;
     % Define a function to read the k-th frame from the video object
     read_frame_fcn = @(k) read(mov, k);
-    
+
 else
     error('Input path is not a valid file or folder.');
 end
@@ -37,13 +67,14 @@ trackingData = struct();
 for i = 1:nframes
     disp(['Tracking frame ', num2str(i), ' of ', num2str(nframes)]);
     im = read_frame_fcn(i); % Use the function handle to get the current frame
-    
+
     F = locateCodes(im, 'sizeThresh', [500, 3200], 'threshMode', 1, ...
         'bradleyFilterSize', bFilterSize, ...
         'bradleyThreshold', bThreshold, 'vis', 0);
-        
+
     trackingData(i).F = F;
-    save('trackingData_WIP.mat', 'trackingData')
+    %save('trackingData_WIP.mat', 'trackingData')
+    % WIP saving no more supported for cleaner parfor
 end
 
 % The rest of the script (Reshaping, Saving, Replay) is largely the same,
@@ -89,40 +120,15 @@ end
 %% --- 5. Save Data Files ---
 % (This section now uses the output_name_prefix)
 disp('--- Step 5: Saving data files ---');
-matFileName = [output_name_prefix, '_trackingData.mat'];
+matFileName = sprintf('%s_%d_%d_trackingData.mat', ...
+    output_name_prefix, bFilterSize(1), bThreshold(1));
 save(matFileName, 'trackingDataReshaped');
 disp(['Saved reshaped tracking data to: ', matFileName]);
 % ... (XML saving logic is similar to before)
 
-%% --- 6. Replay Video with Tracking Overlay ---
-disp('--- Step 6: Generating annotated video replay ---');
-outputMovieName = [output_name_prefix, '_trackingMovie.avi'];
-vidObj = VideoWriter(outputMovieName);
-open(vidObj);
+%% NO REPLAY VIDEO
 
-figure;
-for i = 1:nframes
-    im = read_frame_fcn(i); % Use the function handle again for replay
-    imshow(im);
-    hold on;
-    
-    % (Plotting logic is unchanged)
-    TD = trackingDataReshaped;
-    for j = 1:numel(TD)
-        if isfield(TD(j), 'CentroidX') && numel(TD(j).CentroidX) >= i && TD(j).CentroidX(i) ~= 0
-            plot([TD(j).CentroidX(i), TD(j).FrontX(i)], [TD(j).CentroidY(i), TD(j).FrontY(i)], 'b-', 'LineWidth', 3);
-            text(TD(j).CentroidX(i), TD(j).CentroidY(i), num2str(TD(j).number(i)), 'FontSize', 25, 'Color', 'r');
-        end
-    end
-    
-    drawnow;
-    currFrame = getframe(gcf);
-    writeVideo(vidObj, currFrame);
-    hold off;
-end
 
-close(vidObj);
-disp(['Saved annotated movie to: ', outputMovieName]);
 disp('--- Processing complete. ---');
 
 end

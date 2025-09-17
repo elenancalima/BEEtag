@@ -1,5 +1,5 @@
-image_folder_path = 'Z:\Woncheol\HOI_samples_for_BEEtag';
-output_prefix = 'LocalTest';
+image_folder_path = 'Z:\Images_captured_backup\IMAGING\F\image_files_that_will_get_Backedup_on_Synology\Woncheol\Main_HOI_test\Starv0.5D_gR0052_feeding\2025_06_20_test_1\Default';
+output_prefix = 'Starv0.5D_gR0052_feeding_15_3';
 trackBEEtags_universal(image_folder_path, output_prefix, [15 15], 3);
 
 trackData = load('trackingData_LocalTest_WIP.mat');
